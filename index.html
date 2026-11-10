@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-slate-50 select-none">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Sécurisé & Exercise: How to Spot Fake AI Ads (DW Fact Check)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            dw: {
+              blue: '#002B49',
+              accent: '#00A8E8',
+              hover: '#0084B8',
+              light: '#E6F4F9'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Prevent text selection across the document */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    /* Allow text selection only in textarea for typing visibility, but copy/paste are intercepted via JS */
+    textarea {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+    .fade-in {
+      animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="font-sans text-slate-800 bg-slate-50 min-h-full flex flex-col justify-between selection:bg-none">
+
+  <!-- TOP BAR / HEADER WITH SECURITY STATUS -->
+  <header class="bg-dw-blue text-white shadow-lg sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <span class="bg-red-600 text-white font-bold text-xs uppercase px-2.5 py-1 rounded tracking-wider shadow-sm flex items-center gap-1">
+          <i class="fa-solid fa-shield-halved"></i> Mode Évaluation Sécurisé
+        </span>
+        <h1 class="font-bold text-sm md:text-base tracking-tight hidden sm:block">
+          DW Fact Check Quiz: Fake AI Ads
+        </h1>
+      </div>
+      
+      <!-- SECURITY INDICATOR BADGES -->
+      <div class="flex items-center space-x-2 text-xs">
+        <span id="fullscreenBadge" class="bg-slate-800 text-amber-400 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-amber-400/30">
+          <i class="fa-solid fa-expand"></i> <span class="hidden md:inline">Plein écran:</span> <span id="fsStatusText">Inactif</span>
+        </span>
+        <span id="warningBadge" class="bg-slate-800 text-emerald-400 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-slate-700">
+          <i class="fa-solid fa-triangle-exclamation"></i> Sorties: <span id="warningCountText">0/3</span>
+        </span>
+        <span class="bg-slate-800 text-slate-300 font-medium px-2.5 py-1 rounded-md hidden lg:flex items-center gap-1 border border-slate-700">
+          <i class="fa-solid fa-lock text-dw-accent"></i> Anti-Copier/Coller Actif
+        </span>
+      </div>
+    </div>
+
+    <!-- GLOBAL PROGRESS BAR -->
+    <div class="w-full bg-slate-900/40 h-1.5">
+      <div id="progressBar" class="bg-dw-accent h-1.5 w-0 transition-all duration-500 ease-out"></div>
+    </div>
+  </header>
+
+  <!-- FULLSCREEN REQUIRED OVERLAY (TRIGGERED WHEN FULLSCREEN IS EXITED) -->
+  <div id="fullscreenOverlay" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-6 text-center text-white fade-in">
+    <div class="max-w-md bg-slate-900 border border-red-500/50 p-8 rounded-2xl shadow-2xl space-y-5">
+      <div class="w-16 h-16 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mx-auto text-3xl">
+        <i class="fa-solid fa-compress"></i>
+      </div>
+      <div>
+        <h2 class="text-xl font-extrabold text-red-400 mb-2">Mode Plein Écran Interrompu !</h2>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Pour garantir l'intégrité de l'évaluation, cette épreuve doit impérativement s'effectuer en <strong>mode plein écran</strong>. Toute sortie du plein écran ou changement d'onglet est enregistré.
+        </p>
+      </div>
+      <div id="overlayWarningBox" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-amber-400 font-mono">
+        Avertissements de sécurité : <span id="overlayWarningCount">0</span> / 3
+      </div>
+      <button onclick="requestFullscreenAndContinue()" class="w-full bg-dw-accent hover:bg-dw-hover text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2">
+        <i class="fa-solid fa-expand"></i>
+        <span>Réactiver le plein écran & continuer</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- CHEAT DISQUALIFICATION MODAL -->
+  <div id="disqualifiedModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-50 hidden flex flex-col items-center justify-center p-6 text-center text-white fade-in">
+    <div class="max-w-md bg-slate-900 border border-red-600 p-8 rounded-2xl shadow-2xl space-y-5">
+      <div class="w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center mx-auto text-3xl">
+        <i class="fa-solid fa-user-slash"></i>
+      </div>
+      <div>
+        <h2 class="text-2xl font-black text-red-500 mb-2">Évaluation Verrouillée</h2>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Vous avez quitté la fenêtre ou le mode plein écran plus de <strong>3 fois</strong>. Votre session a été interrompue conformément aux règles de l'épreuve.
+        </p>
+      </div>
+      <div class="bg-red-950/50 border border-red-800/80 p-4 rounded-xl text-xs text-red-200 text-left font-mono space-y-1">
+        <p class="font-bold text-red-400 mb-1"><i class="fa-solid fa-clipboard-list mr-1"></i> Journal d'infractions :</p>
+        <div id="infractionLogList" class="space-y-0.5 text-[11px] max-h-24 overflow-y-auto">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+      <button onclick="forceSubmitDisqualified()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg text-sm">
+        Consulter le bilan avec pénalité
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-4xl mx-auto w-full px-4 py-6 md:py-8 flex-grow">
+
+    <!-- INTRO & FULLSCREEN LAUNCH CARD -->
+    <div id="introCard" class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 md:p-8 mb-8 fade-in">
+      <div class="flex flex-col md:flex-row gap-6 items-center">
+        <div class="w-full md:w-1/2 rounded-xl overflow-hidden shadow-md bg-slate-900 aspect-video relative group">
+          <iframe 
+            class="w-full h-full"
+            src="https://www.youtube-nocookie.com/embed/xT4D-CCBmB0" 
+            title="DW Fact Check Video" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+          </iframe>
+        </div>
+        <div class="w-full md:w-1/2 space-y-4">
+          <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-dw-hover bg-dw-light px-3 py-1 rounded-full">
+            <i class="fa-solid fa-user-shield"></i> Évaluation Sous Surveillance
+          </div>
+          <h2 class="text-xl md:text-2xl font-bold text-slate-900">
+            How to Spot Fake AI Ads (DW Fact Check)
+          </h2>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Évaluation de compréhension orale en français suivie d'un compte rendu de synthèse en anglais.
+          </p>
+          
+          <div class="bg-red-50 border-l-4 border-red-500 p-3.5 rounded-r-lg text-xs text-red-900 space-y-1.5">
+            <p class="font-bold flex items-center gap-1.5 text-red-700">
+              <i class="fa-solid fa-triangle-exclamation"></i> RÈGLES DE SÉCURITÉ STRICTES :
+            </p>
+            <ul class="list-disc list-inside space-y-1 text-red-800 text-[11px]">
+              <li><strong>Plein Écran Obligatoire :</strong> Le test démarre automatiquement en Plein Écran.</li>
+              <li><strong>Interdiction de quitter :</strong> Changer d'onglet ou minimiser la fenêtre est détecté (<strong>Max 3 avertissements</strong>).</li>
+              <li><strong>Copier / Coller Désactivé :</strong> Les raccourcis clavier et clics droits sont bloqués.</li>
+            </ul>
+          </div>
+
+          <button onclick="startQuizWithFullscreen()" class="w-full inline-flex justify-center items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-bold px-6 py-3.5 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 text-sm">
+            <i class="fa-solid fa-expand"></i>
+            <span>Démarrer l'épreuve en Plein Écran</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUIZ CONTAINER (QUESTION 1 TO 5) -->
+    <div id="quizContainer" class="hidden">
+      <!-- STEP INDICATOR -->
+      <div class="flex items-center justify-between mb-4">
+        <span id="stepBadge" class="text-xs font-bold uppercase tracking-wider text-dw-hover bg-dw-light px-3 py-1 rounded-full">
+          Question 1 sur 6
+        </span>
+        <span id="scoreBadge" class="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-sm">
+          Score Quiz : <span id="currentScore" class="font-bold text-slate-800">0</span> / 5
+        </span>
+      </div>
+
+      <!-- CARD FOR QUESTION -->
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 md:p-8 fade-in">
+        <div class="mb-6">
+          <h3 id="questionTitle" class="text-lg md:text-xl font-bold text-slate-900 mb-1.5"></h3>
+          <p id="questionSubtitle" class="text-xs text-slate-500 font-medium"></p>
+        </div>
+
+        <div id="optionsContainer" class="space-y-3 mb-6"></div>
+
+        <div id="feedbackBox" class="hidden mb-6 p-4 rounded-xl border text-sm leading-relaxed fade-in"></div>
+
+        <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+          <button id="timestampBtn" onclick="toggleTimestampModal()" class="hidden text-xs font-semibold text-slate-600 hover:text-dw-hover bg-slate-100 hover:bg-dw-light px-3 py-2 rounded-lg transition-colors">
+            <i class="fa-solid fa-clock text-dw-accent mr-1.5"></i> Extrait vidéo associé
+          </button>
+          
+          <button id="actionBtn" onclick="submitAnswer()" class="ml-auto inline-flex items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-md active:scale-95 text-sm">
+            <span>Valider la réponse</span>
+            <i class="fa-solid fa-check"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- WRITTEN SUMMARY SECTION (QUESTION 6) -->
+    <div id="summaryContainer" class="hidden fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-bold uppercase tracking-wider text-purple-700 bg-purple-100 px-3 py-1 rounded-full">
+          Étape 6 : Task 6 - English Synthesis
+        </span>
+        <span class="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-sm">
+          Partie Écrite (Anti-Coller Actif)
+        </span>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 md:p-8 space-y-6">
+        <div>
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-lg md:text-xl mb-2">
+            <i class="fa-solid fa-pen-nib text-dw-accent"></i>
+            <span>Task 6: Final Written Summary in English</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            Rédigez une synthèse en anglais (<strong>100 à 150 mots</strong>) résumant les enseignements clés du reportage de DW Fact Check.
+          </p>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-xs text-slate-700 space-y-2">
+          <div class="font-bold text-slate-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-list-check text-dw-hover"></i>
+            <span>Key points to address in English:</span>
+          </div>
+          <ul class="grid grid-cols-1 md:grid-cols-3 gap-2 text-slate-600 text-[11px]">
+            <li class="bg-white p-2.5 rounded border border-slate-200">
+              <strong>1. AI Mechanics:</strong> Generative AI text-to-video tools, fast production without prototypes.
+            </li>
+            <li class="bg-white p-2.5 rounded border border-slate-200">
+              <strong>2. Consumer Risks:</strong> Malware, fake subscriptions, non-existent goods, stolen banking data.
+            </li>
+            <li class="bg-white p-2.5 rounded border border-slate-200">
+              <strong>3. Solutions:</strong> Reverse image search, domain check, vigilance with countdown timers.
+            </li>
+          </ul>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+            <label for="englishSummary" class="text-slate-700">Type your synthesis below (Saisie manuelle obligatoire) :</label>
+            <div class="space-x-3">
+              <span>Words: <strong id="wordCount" class="text-slate-900">0</strong> / 100-150</span>
+              <span>Chars: <strong id="charCount" class="text-slate-900">0</strong></span>
+            </div>
+          </div>
+          <textarea 
+            id="englishSummary" 
+            rows="8" 
+            oninput="updateWordCount()"
+            placeholder="Write your summary here... (Copy-pasting external text is strictly blocked)"
+            class="w-full p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-dw-accent focus:border-dw-accent outline-none text-xs md:text-sm transition-all custom-scrollbar bg-slate-50/50 focus:bg-white"></textarea>
+        </div>
+
+        <div id="summaryFeedback" class="hidden p-5 rounded-xl border text-sm space-y-3 fade-in"></div>
+
+        <div class="flex justify-end pt-2">
+          <button id="evaluateSummaryBtn" onclick="evaluateSummary()" class="inline-flex items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-md active:scale-95 text-xs md:text-sm">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Évaluer mon compte rendu</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINAL REPORT & EVALUATION SCREEN -->
+    <div id="resultsContainer" class="hidden fade-in space-y-6">
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 md:p-8 text-center space-y-6">
+        
+        <div id="finalBadgeIcon" class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner">
+          <i class="fa-solid fa-award"></i>
+        </div>
+
+        <div>
+          <h2 class="text-2xl md:text-3xl font-black text-slate-900">Bilan Officiel de l'Évaluation</h2>
+          <p id="disqualifiedNoticeText" class="text-xs text-slate-500 mt-1">Épreuve terminée et enregistrée avec succès.</p>
+        </div>
+
+        <!-- SCORE GRID -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+            <div class="text-xs uppercase font-semibold text-slate-500">Compréhension (Quiz)</div>
+            <div id="finalQuizScore" class="text-2xl font-bold text-dw-blue mt-1">0 / 5</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Questions 1 à 5</div>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+            <div class="text-xs uppercase font-semibold text-slate-500">Compte Rendu (Anglais)</div>
+            <div id="finalWritingScore" class="text-2xl font-bold text-purple-600 mt-1">0 / 5</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Mots-clés & Structure</div>
+          </div>
+          <div class="bg-dw-light border border-dw-accent/30 p-4 rounded-xl">
+            <div class="text-xs uppercase font-semibold text-dw-hover">Score Total Final</div>
+            <div id="finalTotalScore" class="text-2xl font-black text-dw-blue mt-1">0%</div>
+            <div id="finalGradeBadge" class="text-[11px] font-bold text-dw-hover mt-0.5">Niveau : -</div>
+          </div>
+        </div>
+
+        <!-- SECURITY & INFRACTION LOG DISPLAY -->
+        <div class="max-w-3xl mx-auto bg-slate-900 text-slate-200 p-4 rounded-xl text-left text-xs space-y-2 border border-slate-800">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="font-bold flex items-center gap-1.5 text-amber-400">
+              <i class="fa-solid fa-shield-cat"></i> Rapport d'Intégrité & Sécurité :
+            </span>
+            <span id="integrityStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+              Intègre
+            </span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-400 pt-1">
+            <div>• Changements d'onglet / fenêtre : <strong id="totalTabSwitchesText" class="text-white">0</strong></div>
+            <div>• Tentatives copier/coller interceptées : <strong id="totalCopyAttemptsText" class="text-white">0</strong></div>
+          </div>
+          <div id="finalInfractionList" class="mt-2 text-[11px] font-mono text-amber-300/80 bg-slate-950 p-2 rounded max-h-24 overflow-y-auto hidden">
+            <!-- Infractions listed here if any -->
+          </div>
+        </div>
+
+        <!-- RECAP TABLE OF ANSWERS -->
+        <div class="text-left space-y-3 max-w-3xl mx-auto pt-2">
+          <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-dw-accent"></i>
+            <span>Détail des réponses au quiz :</span>
+          </h3>
+          <div id="recapList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- USER SUMMARY DISPLAY -->
+        <div class="text-left space-y-2 max-w-3xl mx-auto bg-slate-50 border border-slate-200 p-4 rounded-xl">
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-file-pen text-purple-600"></i> Compte rendu rédigé (Anglais) :
+          </h4>
+          <p id="userSummaryRecap" class="text-xs text-slate-600 italic bg-white p-3 rounded border border-slate-200 whitespace-pre-line leading-relaxed">
+            -
+          </p>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div class="flex flex-wrap justify-center gap-3 pt-4 border-t border-slate-100">
+          <button onclick="copyResults()" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold px-5 py-2.5 rounded-xl transition-all text-xs md:text-sm shadow-md">
+            <i class="fa-regular fa-copy"></i>
+            <span>Copier le rapport complet (pour l'enseignant)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- TIMESTAMP MODAL -->
+  <div id="timestampModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 fade-in">
+      <div class="flex items-center justify-between">
+        <h4 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-clock text-dw-accent"></i> Horodatage Vidéo DW
+        </h4>
+        <button onclick="toggleTimestampModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      <div id="modalContent" class="text-xs text-slate-600 space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200"></div>
+      <div class="flex justify-end">
+        <button onclick="toggleTimestampModal()" class="bg-slate-800 text-white font-medium text-xs px-4 py-2 rounded-lg">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50 border border-slate-700">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toastMsg">Action effectuée</span>
+  </div>
+
+  <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-500">
+    <p>© DW Fact Check Educational Quiz - Module d'évaluation sécurisé contre la triche.</p>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // -------------------------------------------------------------
+    // ANTI-CHEAT & SECURITY ENGINE
+    // -------------------------------------------------------------
+    let warningCount = 0;
+    const maxWarnings = 3;
+    let copyAttemptsCount = 0;
+    let infractionLogs = [];
+    let isQuizActive = false;
+    let isDisqualified = false;
+
+    // 1. Prevent Right-Click Context Menu
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      recordInfraction("Tentative de clic droit interceptée");
+      showToast("Clic droit désactivé pendant l'évaluation.", "warning");
+    });
+
+    // 2. Block Keyboard Shortcuts for Copy, Paste, Cut, Print, Save
+    document.addEventListener('keydown', (e) => {
+      const forbiddenKeys = ['c', 'v', 'x', 'a', 'p', 's', 'u'];
+      if ((e.ctrlKey || e.metaKey) && forbiddenKeys.includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        copyAttemptsCount++;
+        recordInfraction(`Raccourci clavier interdit (Ctrl/Cmd + ${e.key.toUpperCase()})`);
+        showToast("Raccourcis clavier (Copier/Coller/Imprimer) bloqués !", "warning");
+      }
+    });
+
+    // 3. Block Direct Paste Events on Textarea
+    const summaryTextarea = document.getElementById('englishSummary');
+    summaryTextarea.addEventListener('paste', (e) => {
+      e.preventDefault();
+      copyAttemptsCount++;
+      recordInfraction("Tentative de collage (Paste) dans le zone de texte");
+      showToast("Le collage de texte externe est strictement interdit !", "warning");
+    });
+
+    // 4. Tab / Window Switch Detection (Visibility Change & Blur)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && isQuizActive && !isDisqualified) {
+        handleSecurityBreach("Changement d'onglet ou minimisation du navigateur");
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      if (isQuizActive && !isDisqualified && !document.hidden) {
+        handleSecurityBreach("Perte de focus de la fenêtre d'évaluation");
+      }
+    });
+
+    // 5. Fullscreen Change Detection
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+
+    function handleFullscreenChange() {
+      const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+      const fsBadge = document.getElementById('fullscreenBadge');
+      const fsText = document.getElementById('fsStatusText');
+
+      if (isFS) {
+        fsBadge.className = "bg-slate-800 text-emerald-400 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-emerald-500/30";
+        fsText.innerText = "Actif";
+        document.getElementById('fullscreenOverlay').classList.add('hidden');
+      } else {
+        fsBadge.className = "bg-slate-800 text-amber-400 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-amber-400/30";
+        fsText.innerText = "Inactif";
+        
+        if (isQuizActive && !isDisqualified) {
+          handleSecurityBreach("Sortie du mode Plein Écran");
+          document.getElementById('fullscreenOverlay').classList.remove('hidden');
+        }
+      }
+    }
+
+    function handleSecurityBreach(reason) {
+      warningCount++;
+      recordInfraction(reason);
+
+      // Update Top Status Bar
+      const warningBadge = document.getElementById('warningBadge');
+      const warningCountText = document.getElementById('warningCountText');
+      warningCountText.innerText = `${warningCount}/3`;
+
+      if (warningCount >= 2) {
+        warningBadge.className = "bg-red-900 text-red-300 font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-red-500";
+      } else {
+        warningBadge.className = "bg-slate-800 text-amber-400 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-amber-400/30";
+      }
+
+      document.getElementById('overlayWarningCount').innerText = warningCount;
+
+      if (warningCount >= maxWarnings) {
+        triggerDisqualification();
+      } else {
+        showToast(`Avertissement ${warningCount}/3 : ${reason}`, "warning");
+      }
+    }
+
+    function recordInfraction(detail) {
+      const timestamp = new Date().toLocaleTimeString();
+      infractionLogs.push(`[${timestamp}] ${detail}`);
+    }
+
+    function triggerDisqualification() {
+      isDisqualified = true;
+      isQuizActive = false;
+      
+      const logList = document.getElementById('infractionLogList');
+      logList.innerHTML = infractionLogs.map(log => `<div>${log}</div>`).join('');
+
+      document.getElementById('disqualifiedModal').classList.remove('hidden');
+    }
+
+    function forceSubmitDisqualified() {
+      document.getElementById('disqualifiedModal').classList.add('hidden');
+      document.getElementById('fullscreenOverlay').classList.add('hidden');
+      
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+
+      showFinalResults(true);
+    }
+
+    function requestFullscreenAndContinue() {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen();
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+    }
+
+    function startQuizWithFullscreen() {
+      requestFullscreenAndContinue();
+      isQuizActive = true;
+      startQuiz();
+    }
+
+
+    // -------------------------------------------------------------
+    // QUIZ DATA & LOGIC
+    // -------------------------------------------------------------
+    const quizQuestions = [
+      {
+        id: 1,
+        type: 'single',
+        title: "1. Quel exemple d'objet généré par IA est présenté au début de la vidéo pour illustrer le phénomène ?",
+        subtitle: "Sélectionnez l'unique bonne réponse :",
+        timestamp: "00:00:09",
+        transcriptSnippet: "[00:00:09 - 00:00:25] DW présente une publicité devenue virale montrant une tasse à café sculptée en forme d'empilement de livres. Il s'agit en réalité d'un concept virtuel généré par IA qui n'existe pas.",
+        options: [
+          { text: "Un haut-parleur intelligent en bois sculpté de façon rétro", correct: false },
+          { text: "Une tasse à café en forme d'empilement de livres très détaillée", correct: true },
+          { text: "Une paire de baskets qui change de couleur selon la température", correct: false },
+          { text: "Un robot de cuisine miniature imprimé en 3D", correct: false }
+        ],
+        explanation: "Au début de la vidéo [00:00:09], DW analyse une publicité virale montrant une tasse à café sculptée ressemblant à une pile de livres. Les victimes recevaient une tasse en plastique bas de gamme ou rien du tout !"
+      },
+      {
+        id: 2,
+        type: 'multiple',
+        title: "2. Quels risques court-on en cliquant sur le lien de ces publicités frauduleuses ?",
+        subtitle: "Sélectionnez toutes les réponses correctes :",
+        timestamp: "00:01:53",
+        transcriptSnippet: "[00:01:53 - 00:02:40] L'enquête explique que ces faux sites web cherchent souvent à capturer vos coordonnées bancaires pour prélever des abonnements cachés récurrents ou infecter votre navigateur avec des malwares.",
+        options: [
+          { text: "L'infection de votre appareil par des malwares ou des scripts malveillants", correct: true },
+          { text: "L'inscription forcée à des abonnements mensuels bancaires cachés et récurrents", correct: true },
+          { text: "Le vol et la revente de vos données de carte bancaire", correct: true },
+          { text: "Le piratage automatique et immédiat du réseau Wi-Fi", correct: false }
+        ],
+        explanation: "Comme expliqué à [00:01:53], l'accès aux sites frauduleux expose au vol de carte bancaire, aux prélèvements cachés répétés et à l'installation de malwares."
+      },
+      {
+        id: 3,
+        type: 'single',
+        title: "3. Pourquoi la création de ces fausses publicités est-elle devenue si rapide et peu coûteuse ?",
+        subtitle: "Sélectionnez l'élément prédominant :",
+        timestamp: "00:03:15",
+        transcriptSnippet: "[00:03:15 - 00:03:45] Avec les nouveaux outils génératifs vidéo (IA), il suffit de taper un simple texte (prompt). Plus besoin d'acheter de prototype, de fabriquer le produit ou d'embaucher des acteurs.",
+        options: [
+          { text: "Car les réseaux sociaux remboursent les frais de création publicitaire", correct: false },
+          { text: "Grâce à la génération vidéo par IA à partir de simples prompts texte, sans tournage ni prototype", correct: true },
+          { text: "Parce que les caméras de studio professionnel sont devenues gratuites", correct: false },
+          { text: "Parce que les gouvernements subventionnent le marketing IA", correct: false }
+        ],
+        explanation: "L'enquête DW montre à [00:03:15] que l'IA vidéo (Text-to-Video) permet de concevoir des clips publicitaires en quelques secondes avec un simple prompt, sans prototype physique."
+      },
+      {
+        id: 4,
+        type: 'multiple',
+        title: "4. Quelles méthodes sont recommandées par DW Fact Check pour détecter ces arnaques ?",
+        subtitle: "Sélectionnez toutes les bonnes pratiques :",
+        timestamp: "00:04:30",
+        transcriptSnippet: "[00:04:30 - 00:05:40] DW recommande : 1. La recherche d'image inversée. 2. La vérification du nom de domaine/URL. 3. La méfiance envers les décomptes d'urgence et prix dérisoires.",
+        options: [
+          { text: "Utiliser la recherche d'image inversée pour identifier la source visuelle ou l'IA", correct: true },
+          { text: "Inspecter l'URL du site (orthographe, nom de domaine récent)", correct: true },
+          { text: "Se méfier des décomptes d'urgence et réductions exagérées", correct: true },
+          { text: "Se fier au nombre de 'J'aime' sous la vidéo publicitaire", correct: false }
+        ],
+        explanation: "À [00:04:30], DW met en avant : la recherche d'image inversée, l'inspection minutieuse de l'URL du site web, et la vigilance face au marketing d'urgence."
+      },
+      {
+        id: 5,
+        type: 'single',
+        title: "5. Pourquoi les réseaux sociaux échouent-ils souvent à bloquer ces pubs IA avant leur diffusion ?",
+        subtitle: "Sélectionnez la raison principale :",
+        timestamp: "00:06:10",
+        transcriptSnippet: "[00:06:10 - 00:07:05] Le volume astronomique de pubs dépasse les capacités d'examen humain, tandis que les algorithmes de modération automatique peinent à distinguer le réalisme de l'IA d'un vrai produit.",
+        options: [
+          { text: "Les plateformes n'ont pas le droit légal de vérifier les publicités payantes", correct: false },
+          { text: "La modération automatique est dépassée par le volume massif et par l'hyperréalisme des visuels IA", correct: true },
+          { text: "Les publicités générées par IA sont certifiées d'office", correct: false },
+          { text: "Les plateformes possèdent les générateurs d'IA", correct: false }
+        ],
+        explanation: "Selon la vidéo [00:06:10], l'explosion du volume couplée au réalisme des visuels IA prend de court les filtres automatiques des plateformes."
+      }
+    ];
+
+    let currentQuestionIndex = 0;
+    let userAnswers = {};
+    let quizScore = 0;
+    let isAnswerSubmitted = false;
+    let summaryScore = 0;
+
+    const introCard = document.getElementById('introCard');
+    const quizContainer = document.getElementById('quizContainer');
+    const summaryContainer = document.getElementById('summaryContainer');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const stepBadge = document.getElementById('stepBadge');
+    const scoreBadge = document.getElementById('currentScore');
+    const progressBar = document.getElementById('progressBar');
+
+    const questionTitle = document.getElementById('questionTitle');
+    const questionSubtitle = document.getElementById('questionSubtitle');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const feedbackBox = document.getElementById('feedbackBox');
+    const timestampBtn = document.getElementById('timestampBtn');
+    const actionBtn = document.getElementById('actionBtn');
+
+    function startQuiz() {
+      introCard.classList.add('hidden');
+      quizContainer.classList.remove('hidden');
+      currentQuestionIndex = 0;
+      userAnswers = {};
+      quizScore = 0;
+      updateScoreDisplay();
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      isAnswerSubmitted = false;
+      const q = quizQuestions[currentQuestionIndex];
+      const progressPercent = ((currentQuestionIndex + 1) / 6) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+      stepBadge.innerText = `Question ${currentQuestionIndex + 1} sur 5`;
+
+      questionTitle.innerText = q.title;
+      questionSubtitle.innerText = q.subtitle;
+
+      feedbackBox.classList.add('hidden');
+      feedbackBox.className = "hidden mb-6 p-4 rounded-xl border text-sm leading-relaxed fade-in";
+      timestampBtn.classList.remove('hidden');
+      actionBtn.innerHTML = `<span>Valider la réponse</span><i class="fa-solid fa-check"></i>`;
+      actionBtn.disabled = false;
+
+      optionsContainer.innerHTML = '';
+      q.options.forEach((opt, idx) => {
+        const optionDiv = document.createElement('div');
+        const isMultiple = q.type === 'multiple';
+        const inputType = isMultiple ? 'checkbox' : 'radio';
+
+        optionDiv.className = `border-2 border-slate-200 hover:border-dw-accent/60 bg-white p-4 rounded-xl cursor-pointer transition-all flex items-start gap-3 select-none`;
+        optionDiv.onclick = () => selectOption(idx, isMultiple);
+
+        optionDiv.innerHTML = `
+          <div class="mt-0.5 flex-shrink-0">
+            <input type="${inputType}" name="option" id="opt_${idx}" value="${idx}" class="w-4 h-4 text-dw-hover focus:ring-dw-accent border-slate-300 rounded cursor-pointer pointer-events-none">
+          </div>
+          <label for="opt_${idx}" class="text-xs md:text-sm text-slate-700 font-medium cursor-pointer leading-snug flex-grow">
+            ${opt.text}
+          </label>
+        `;
+        optionsContainer.appendChild(optionDiv);
+      });
+    }
+
+    function selectOption(index, isMultiple) {
+      if (isAnswerSubmitted) return;
+      const qId = quizQuestions[currentQuestionIndex].id;
+
+      if (!isMultiple) {
+        userAnswers[qId] = index;
+        const allOptions = optionsContainer.children;
+        for (let i = 0; i < allOptions.length; i++) {
+          const div = allOptions[i];
+          const input = div.querySelector('input');
+          if (i === index) {
+            div.classList.add('border-dw-accent', 'bg-dw-light/50');
+            div.classList.remove('border-slate-200');
+            input.checked = true;
+          } else {
+            div.classList.remove('border-dw-accent', 'bg-dw-light/50');
+            div.classList.add('border-slate-200');
+            input.checked = false;
+          }
+        }
+      } else {
+        if (!userAnswers[qId] || !Array.isArray(userAnswers[qId])) {
+          userAnswers[qId] = [];
+        }
+        const arr = userAnswers[qId];
+        const pos = arr.indexOf(index);
+        if (pos > -1) arr.splice(pos, 1);
+        else arr.push(index);
+
+        const div = optionsContainer.children[index];
+        const input = div.querySelector('input');
+        input.checked = arr.includes(index);
+
+        if (input.checked) {
+          div.classList.add('border-dw-accent', 'bg-dw-light/50');
+          div.classList.remove('border-slate-200');
+        } else {
+          div.classList.remove('border-dw-accent', 'bg-dw-light/50');
+          div.classList.add('border-slate-200');
+        }
+      }
+    }
+
+    function submitAnswer() {
+      const q = quizQuestions[currentQuestionIndex];
+      const qId = q.id;
+      const userAns = userAnswers[qId];
+
+      if (userAns === undefined || (Array.isArray(userAns) && userAns.length === 0)) {
+        showToast("Veuillez choisir une réponse avant de valider.", "warning");
+        return;
+      }
+
+      if (!isAnswerSubmitted) {
+        isAnswerSubmitted = true;
+        let isCorrect = false;
+
+        if (q.type === 'single') {
+          isCorrect = q.options[userAns].correct;
+        } else {
+          const correctIndices = q.options.reduce((acc, opt, i) => opt.correct ? [...acc, i] : acc, []);
+          const userIndices = Array.isArray(userAns) ? userAns.sort() : [];
+          isCorrect = (correctIndices.length === userIndices.length) && 
+                      correctIndices.every((val, index) => val === userIndices[index]);
+        }
+
+        const optionDivs = optionsContainer.children;
+        q.options.forEach((opt, i) => {
+          const div = optionDivs[i];
+          div.onclick = null;
+          if (opt.correct) {
+            div.classList.add('border-emerald-500', 'bg-emerald-50');
+          } else if ((q.type === 'single' && userAns === i) || (q.type === 'multiple' && Array.isArray(userAns) && userAns.includes(i))) {
+            div.classList.add('border-red-400', 'bg-red-50');
+          }
+        });
+
+        feedbackBox.classList.remove('hidden');
+        if (isCorrect) {
+          quizScore += 1;
+          updateScoreDisplay();
+          feedbackBox.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
+          feedbackBox.innerHTML = `
+            <div class="font-bold flex items-center gap-2 text-emerald-700 mb-1">
+              <i class="fa-solid fa-circle-check"></i> Réponse correcte ! (+1 point)
+            </div>
+            <p>${q.explanation}</p>
+          `;
+        } else {
+          feedbackBox.classList.add('bg-red-50', 'border-red-300', 'text-red-900');
+          feedbackBox.innerHTML = `
+            <div class="font-bold flex items-center gap-2 text-red-700 mb-1">
+              <i class="fa-solid fa-circle-xmark"></i> Réponse incorrecte
+            </div>
+            <p>${q.explanation}</p>
+          `;
+        }
+
+        actionBtn.innerHTML = `<span>Question suivante</span><i class="fa-solid fa-arrow-right"></i>`;
+      } else {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < quizQuestions.length) {
+          renderQuestion();
+        } else {
+          showSummaryTask();
+        }
+      }
+    }
+
+    function updateScoreDisplay() {
+      scoreBadge.innerText = quizScore;
+    }
+
+    function toggleTimestampModal() {
+      const modal = document.getElementById('timestampModal');
+      const modalContent = document.getElementById('modalContent');
+      const q = quizQuestions[currentQuestionIndex];
+
+      if (modal.classList.contains('hidden')) {
+        modalContent.innerHTML = `
+          <div class="font-bold text-slate-800 flex items-center justify-between">
+            <span>Horodatage : <span class="text-dw-accent">${q.timestamp}</span></span>
+          </div>
+          <p class="text-xs text-slate-600 italic border-l-2 border-dw-accent pl-2 mt-1">
+            ${q.transcriptSnippet}
+          </p>
+        `;
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function showSummaryTask() {
+      quizContainer.classList.add('hidden');
+      summaryContainer.classList.remove('hidden');
+      progressBar.style.width = `100%`;
+    }
+
+    function updateWordCount() {
+      const text = document.getElementById('englishSummary').value.trim();
+      const words = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
+      const chars = text.length;
+
+      document.getElementById('wordCount').innerText = words;
+      document.getElementById('charCount').innerText = chars;
+
+      const wordCountEl = document.getElementById('wordCount');
+      if (words >= 100 && words <= 150) {
+        wordCountEl.className = "text-emerald-600 font-bold";
+      } else if (words > 150) {
+        wordCountEl.className = "text-amber-600 font-bold";
+      } else {
+        wordCountEl.className = "text-slate-900";
+      }
+    }
+
+    function evaluateSummary() {
+      const text = document.getElementById('englishSummary').value.trim();
+      const words = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
+
+      if (words < 30) {
+        showToast("Le compte rendu est trop court. Rédigez au moins 60 à 100 mots.", "warning");
+        return;
+      }
+
+      const lowerText = text.toLowerCase();
+      const keywordsG1 = ["ai", "generative", "prompt", "video", "tool", "fake", "unreal"];
+      const keywordsG2 = ["scam", "risk", "malware", "bank", "money", "subscription", "charge", "data"];
+      const keywordsG3 = ["image", "search", "reverse", "url", "check", "verify", "domain", "tips"];
+
+      const matchG1 = keywordsG1.filter(kw => lowerText.includes(kw));
+      const matchG2 = keywordsG2.filter(kw => lowerText.includes(kw));
+      const matchG3 = keywordsG3.filter(kw => lowerText.includes(kw));
+
+      let points = 0;
+      if (words >= 90 && words <= 160) points += 1.5;
+      else if (words >= 50) points += 1.0;
+      else points += 0.5;
+
+      if (matchG1.length >= 2) points += 1.1;
+      else if (matchG1.length === 1) points += 0.5;
+
+      if (matchG2.length >= 2) points += 1.2;
+      else if (matchG2.length === 1) points += 0.6;
+
+      if (matchG3.length >= 2) points += 1.2;
+      else if (matchG3.length === 1) points += 0.6;
+
+      summaryScore = Math.min(5, Math.round(points * 10) / 10);
+
+      const feedbackBox = document.getElementById('summaryFeedback');
+      feedbackBox.classList.remove('hidden');
+
+      let badgeBg = summaryScore >= 4 ? "bg-emerald-50 border-emerald-300 text-emerald-900" : "bg-amber-50 border-amber-300 text-amber-900";
+      feedbackBox.className = `p-5 rounded-xl border text-sm space-y-3 fade-in ${badgeBg}`;
+
+      feedbackBox.innerHTML = `
+        <div class="flex items-center justify-between border-b pb-2 border-slate-200/60">
+          <span class="font-bold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-chart-simple"></i> Évaluation de la rédaction anglaise
+          </span>
+          <span class="text-xs font-bold px-3 py-1 rounded-full bg-white border">
+            Score : ${summaryScore} / 5
+          </span>
+        </div>
+        <div class="space-y-1.5 text-xs">
+          <p><strong>Longueur :</strong> ${words} mots (${words >= 100 && words <= 150 ? 'Format respecté !' : 'Cible idéale: 100-150 mots'})</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 pt-1">
+            <div class="bg-white p-2 rounded border">
+              <strong>Génération IA :</strong>
+              <div class="text-[11px] text-slate-600">${matchG1.length > 0 ? matchG1.join(', ') : 'Termes IA manquants.'}</div>
+            </div>
+            <div class="bg-white p-2 rounded border">
+              <strong>Risques identifiés :</strong>
+              <div class="text-[11px] text-slate-600">${matchG2.length > 0 ? matchG2.join(', ') : 'Ex: malware, subscription.'}</div>
+            </div>
+            <div class="bg-white p-2 rounded border">
+              <strong>Prévention / Vérification :</strong>
+              <div class="text-[11px] text-slate-600">${matchG3.length > 0 ? matchG3.join(', ') : 'Ex: reverse image, url.'}</div>
+            </div>
+          </div>
+        </div>
+        <div class="pt-2 flex justify-end">
+          <button onclick="showFinalResults(false)" class="inline-flex items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-semibold px-5 py-2.5 rounded-xl text-xs shadow-md transition-all">
+            <span>Accéder au Bilan Global Final</span>
+            <i class="fa-solid fa-flag-checkered"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    function showFinalResults(wasDisqualified = false) {
+      isQuizActive = false;
+      summaryContainer.classList.add('hidden');
+      quizContainer.classList.add('hidden');
+      introCard.classList.add('hidden');
+      resultsContainer.classList.remove('hidden');
+
+      document.getElementById('finalQuizScore').innerText = `${quizScore} / 5`;
+      document.getElementById('finalWritingScore').innerText = `${summaryScore} / 5`;
+
+      let totalPoints = quizScore + summaryScore;
+      
+      // If penalized/disqualified
+      if (wasDisqualified || warningCount >= maxWarnings) {
+        totalPoints = Math.max(0, totalPoints - 3); // 3 points penalty
+        document.getElementById('integrityStatusBadge').className = "px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/40";
+        document.getElementById('integrityStatusBadge').innerText = "Session Verrouillée / Pénalité ⚠️";
+        document.getElementById('disqualifiedNoticeText').innerText = "Attentisme : Pénalité appliquée en raison de sorties répétées de l'épreuve.";
+        document.getElementById('finalBadgeIcon').className = "w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner";
+        document.getElementById('finalBadgeIcon').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>`;
+      }
+
+      const percentage = Math.round((totalPoints / 10) * 100);
+      document.getElementById('finalTotalScore').innerText = `${percentage}%`;
+
+      const gradeBadge = document.getElementById('finalGradeBadge');
+      if (percentage >= 80) gradeBadge.innerText = "Niveau : Expert Fact-Checker 🏆";
+      else if (percentage >= 60) gradeBadge.innerText = "Niveau : Vigilant / Intermédiaire 🛡️";
+      else gradeBadge.innerText = "Niveau : À renforcer 📖";
+
+      // Security counters
+      document.getElementById('totalTabSwitchesText').innerText = warningCount;
+      document.getElementById('totalCopyAttemptsText').innerText = copyAttemptsCount;
+
+      const finalInfractionList = document.getElementById('finalInfractionList');
+      if (infractionLogs.length > 0) {
+        finalInfractionList.classList.remove('hidden');
+        finalInfractionList.innerHTML = infractionLogs.map(log => `<div>${log}</div>`).join('');
+      }
+
+      // Quiz Recap
+      const recapList = document.getElementById('recapList');
+      recapList.innerHTML = '';
+      quizQuestions.forEach(q => {
+        const uAns = userAnswers[q.id];
+        let isCorrect = false;
+
+        if (q.type === 'single') {
+          isCorrect = q.options[uAns] ? q.options[uAns].correct : false;
+        } else {
+          const correctIndices = q.options.reduce((acc, opt, i) => opt.correct ? [...acc, i] : acc, []);
+          const userIndices = Array.isArray(uAns) ? uAns.sort() : [];
+          isCorrect = (correctIndices.length === userIndices.length) && 
+                      correctIndices.every((val, index) => val === userIndices[index]);
+        }
+
+        const item = document.createElement('div');
+        item.className = `p-3.5 rounded-xl border text-xs leading-relaxed ${isCorrect ? 'bg-emerald-50/50 border-emerald-200' : 'bg-red-50/50 border-red-200'}`;
+        item.innerHTML = `
+          <div class="flex items-start gap-2">
+            <i class="${isCorrect ? 'fa-solid fa-circle-check text-emerald-600' : 'fa-solid fa-circle-xmark text-red-500'} mt-0.5"></i>
+            <div class="space-y-1">
+              <p class="font-bold text-slate-800">${q.title}</p>
+              <p class="text-slate-600">${q.explanation}</p>
+            </div>
+          </div>
+        `;
+        recapList.appendChild(item);
+      });
+
+      const summaryText = document.getElementById('englishSummary').value.trim();
+      document.getElementById('userSummaryRecap').innerText = summaryText || "(Aucun texte saisi)";
+    }
+
+    function copyResults() {
+      const totalPoints = quizScore + summaryScore;
+      const percentage = Math.round((totalPoints / 10) * 100);
+      const summaryText = document.getElementById('englishSummary').value.trim();
+
+      const reportText = 
+`====================================================
+RAPPORT D'ÉVALUATION SÉCURISÉ - DW FACT CHECK
+====================================================
+• Score Compréhension (Quiz) : ${quizScore} / 5
+• Score Compte Rendu (Anglais) : ${summaryScore} / 5
+• Score Total Ajusté : ${percentage}%
+
+--- RAPPORT D'INTÉGRITÉ & SÉCURITÉ ---
+• Mode Plein Écran Respecté : ${warningCount === 0 ? 'Oui' : 'Non'}
+• Nombre de sorties / changement d'onglets : ${warningCount} / 3
+• Tentatives de Copier/Coller bloquées : ${copyAttemptsCount}
+• Journal des événements :
+${infractionLogs.length > 0 ? infractionLogs.join('\n') : 'Aucune infraction enregistrée.'}
+
+--- COMPTE RENDU EN ANGLAIS DU ÉLÈVE ---
+${summaryText}
+====================================================`;
+
+      const dummy = document.createElement("textarea");
+      document.body.appendChild(dummy);
+      dummy.value = reportText;
+      dummy.select();
+      document.execCommand("copy");
+      document.body.removeChild(dummy);
+
+      showToast("Rapport complet d'évaluation copié pour l'enseignant !");
+    }
+
+    function showToast(message, type = "success") {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.innerText = message;
+      if (type === "warning") {
+        toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400 text-base";
+      } else {
+        toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
