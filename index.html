@@ -32,7 +32,6 @@
     }
   </script>
   <style>
-    /* Prevent text selection across document except in inputs */
     body {
       -webkit-user-select: none;
       -moz-user-select: none;
@@ -102,7 +101,7 @@
   </header>
 
   <!-- FULLSCREEN REQUIRED OVERLAY -->
-  <div id="fullscreenOverlay" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-6 text-center text-white fade-in">
+  <div id="fullscreenOverlay" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex-col items-center justify-center p-6 text-center text-white fade-in">
     <div class="max-w-md bg-slate-900 border border-red-500/50 p-8 rounded-2xl shadow-2xl space-y-5">
       <div class="w-16 h-16 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mx-auto text-3xl">
         <i class="fa-solid fa-compress"></i>
@@ -116,7 +115,7 @@
       <div id="overlayWarningBox" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-amber-400 font-mono">
         Avertissements de sécurité : <span id="overlayWarningCount">0</span> / 3
       </div>
-      <button type="button" onclick="requestFullscreenAndContinue()" class="w-full bg-dw-accent hover:bg-dw-hover text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer">
+      <button type="button" id="resumeFsBtn" class="w-full bg-dw-accent hover:bg-dw-hover text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2 cursor-pointer">
         <i class="fa-solid fa-expand"></i>
         <span>Réactiver le plein écran & continuer</span>
       </button>
@@ -124,7 +123,7 @@
   </div>
 
   <!-- CHEAT DISQUALIFICATION MODAL -->
-  <div id="disqualifiedModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-50 hidden flex flex-col items-center justify-center p-6 text-center text-white fade-in">
+  <div id="disqualifiedModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-lg z-50 hidden flex-col items-center justify-center p-6 text-center text-white fade-in">
     <div class="max-w-md bg-slate-900 border border-red-600 p-8 rounded-2xl shadow-2xl space-y-5">
       <div class="w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center mx-auto text-3xl">
         <i class="fa-solid fa-user-slash"></i>
@@ -139,7 +138,7 @@
         <p class="font-bold text-red-400 mb-1"><i class="fa-solid fa-clipboard-list mr-1"></i> Infractions enregistrées :</p>
         <div id="infractionLogList" class="space-y-0.5 text-[11px] max-h-24 overflow-y-auto"></div>
       </div>
-      <button type="button" onclick="forceSubmitDisqualified()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg text-sm cursor-pointer">
+      <button type="button" id="forceSubmitBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg text-sm cursor-pointer">
         Voir le bilan (avec pénalité)
       </button>
     </div>
@@ -171,7 +170,6 @@
           type="text" 
           id="studentNameInput" 
           placeholder="Ex: Thomas Dupont (Classe de 3ème B)" 
-          onkeydown="if(event.key === 'Enter') validateAndStart()"
           class="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-dw-accent focus:border-dw-accent outline-none text-xs md:text-sm bg-white"
         />
       </div>
@@ -189,14 +187,14 @@
         </ul>
       </div>
 
-      <button type="button" id="startBtn" onclick="validateAndStart()" class="w-full inline-flex justify-center items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-bold px-6 py-4 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-98 text-sm cursor-pointer">
+      <button type="button" id="startBtn" class="w-full inline-flex justify-center items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-bold px-6 py-4 rounded-xl transition-all shadow-md hover:shadow-lg text-sm cursor-pointer">
         <i class="fa-solid fa-expand"></i>
         <span>Commencer l'évaluation en Plein Écran</span>
       </button>
     </div>
 
     <!-- MAIN EVALUATION WORKSPACE (PERSISTENT 2-COLUMN GRID WHEN ACTIVE) -->
-    <div id="evalWorkspace" class="hidden grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+    <div id="evalWorkspace" class="hidden grid-cols-1 md:grid-cols-12 gap-6 items-start">
       
       <!-- LEFT COLUMN: PERSISTENT VIDEO PLAYER PANEL (5 COLS) -->
       <div class="md:col-span-5 bg-white rounded-2xl shadow-lg border border-slate-200 p-4 sticky top-16 z-30 space-y-4">
@@ -225,17 +223,588 @@
           <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
             <i class="fa-solid fa-clock-rotate-left text-dw-accent mr-1"></i> Accès rapide aux chapitres :
           </p>
-          <div class="flex flex-wrap gap-1.5 text-[11px]">
-            <button type="button" onclick="seekVideoTo(0)" class="bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
+          <div id="chapterButtons" class="flex flex-wrap gap-1.5 text-[11px]">
+            <button type="button" data-seconds="0" class="seek-btn bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
               ▶ 0:00 (Intro Tasse)
             </button>
-            <button type="button" onclick="seekVideoTo(24)" class="bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
+            <button type="button" data-seconds="24" class="seek-btn bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
               ▶ 0:24 (Risques)
             </button>
-            <button type="button" onclick="seekVideoTo(124)" class="bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
+            <button type="button" data-seconds="124" class="seek-btn bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
               ▶ 2:04 (Prompts IA)
             </button>
-            <button type="button" onclick="seekVideoTo(213)" class="bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
+            <button type="button" data-seconds="213" class="seek-btn bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
               ▶ 3:33 (Méthodes)
             </button>
-            <button type="button" onclick="seekVideoTo(307)" class="bg-slate-100 hover:bg-dw-light hover
+            <button type="button" data-seconds="307" class="seek-btn bg-slate-100 hover:bg-dw-light hover:text-dw-hover text-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-200 transition-colors font-mono cursor-pointer">
+              ▶ 5:07 (Modération)
+            </button>
+          </div>
+        </div>
+
+        <!-- INFO MESSAGE -->
+        <div class="text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-dw-accent"></i>
+          <span>Vous pouvez mettre la vidéo en pause ou revenir en arrière librement sans pénalité.</span>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: QUIZ / SUMMARY INTERFACE (7 COLS) -->
+      <div class="md:col-span-7 space-y-6">
+        
+        <!-- QUIZ QUESTIONS VIEW -->
+        <div id="quizContainer" class="space-y-4">
+          <!-- STEP STATUS BAR -->
+          <div class="flex items-center justify-between bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+            <span id="stepBadge" class="text-xs font-bold uppercase tracking-wider text-dw-hover bg-dw-light px-3 py-1 rounded-full">
+              Question 1 / 5
+            </span>
+            <span class="text-xs font-semibold text-slate-600">
+              Score Quiz : <strong id="currentScore" class="text-slate-900 font-bold">0</strong> / 5
+            </span>
+          </div>
+
+          <!-- QUESTION CARD -->
+          <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 space-y-5 fade-in">
+            <div>
+              <h3 id="questionTitle" class="text-base md:text-lg font-bold text-slate-900 leading-snug"></h3>
+              <p id="questionSubtitle" class="text-xs text-slate-500 font-medium mt-1"></p>
+            </div>
+
+            <div id="optionsContainer" class="space-y-2.5"></div>
+
+            <div id="feedbackBox" class="hidden p-4 rounded-xl border text-xs md:text-sm leading-relaxed fade-in"></div>
+
+            <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button type="button" id="jumpQuestionTimeBtn" class="text-xs font-semibold text-dw-hover bg-dw-light hover:bg-dw-accent hover:text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-circle-play"></i> Replacer la vidéo à ce passage
+              </button>
+              
+              <button type="button" id="actionBtn" class="ml-auto inline-flex items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-semibold px-5 py-2.5 rounded-xl transition-all shadow-md text-xs md:text-sm cursor-pointer">
+                <span>Valider la réponse</span>
+                <i class="fa-solid fa-check"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ENGLISH SUMMARY WRITING VIEW -->
+        <div id="summaryContainer" class="hidden space-y-4 fade-in">
+          <div class="flex items-center justify-between bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-purple-700 bg-purple-100 px-3 py-1 rounded-full">
+              Étape 6 : Written Synthesis (English)
+            </span>
+            <span class="text-xs font-semibold text-slate-500">
+              Anti-Coller Actif <i class="fa-solid fa-lock text-dw-accent"></i>
+            </span>
+          </div>
+
+          <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 space-y-5">
+            <div>
+              <h3 class="text-base md:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-pen-nib text-dw-accent"></i>
+                <span>Task 6: Write a Short Summary in English</span>
+              </h3>
+              <p class="text-xs text-slate-600 mt-1">
+                Summarize the key points of the DW report in English (target length: <strong>100 to 150 words</strong>). You can still watch the video on the left if needed.
+              </p>
+            </div>
+
+            <!-- KEY CONCEPTS GUIDE -->
+            <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-xl text-xs space-y-2">
+              <p class="font-bold text-slate-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-lightbulb text-amber-500"></i> Key topics to mention in your text:
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-slate-600">
+                <div class="bg-white p-2 rounded border border-slate-200">
+                  <strong>1. AI Tech:</strong> Generative AI text-to-video tools, fast production without prototypes.
+                </div>
+                <div class="bg-white p-2 rounded border border-slate-200">
+                  <strong>2. Consumer Scams:</strong> Non-existent products, hidden subscriptions, card data theft.
+                </div>
+                <div class="bg-white p-2 rounded border border-slate-200">
+                  <strong>3. How to Spot:</strong> Reverse image search, domain check, fake urgent timers.
+                </div>
+              </div>
+            </div>
+
+            <!-- TEXTAREA AREA -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-xs font-semibold text-slate-600">
+                <label for="englishSummary" class="text-slate-800">Your text in English (manual typing required) :</label>
+                <div class="space-x-3 text-[11px]">
+                  <span>Words: <strong id="wordCount" class="text-slate-900">0</strong> / 100-150</span>
+                  <span>Chars: <strong id="charCount" class="text-slate-900">0</strong></span>
+                </div>
+              </div>
+              <textarea 
+                id="englishSummary" 
+                rows="8" 
+                placeholder="Write your summary here... (Copy-pasting external text is strictly blocked)"
+                class="w-full p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-dw-accent focus:border-dw-accent outline-none text-xs md:text-sm transition-all custom-scrollbar bg-slate-50/50 focus:bg-white"></textarea>
+            </div>
+
+            <div id="summaryFeedback" class="hidden p-4 rounded-xl border text-xs md:text-sm space-y-3 fade-in"></div>
+
+            <div class="flex justify-end pt-2">
+              <button type="button" id="evaluateSummaryBtn" class="inline-flex items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-md text-xs md:text-sm cursor-pointer">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Évaluer mon compte rendu</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- FINAL RESULTS & REPORT VIEW -->
+    <div id="resultsContainer" class="hidden max-w-4xl mx-auto space-y-6 fade-in">
+      <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 md:p-8 text-center space-y-6">
+        
+        <div id="finalBadgeIcon" class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner">
+          <i class="fa-solid fa-award"></i>
+        </div>
+
+        <div>
+          <h2 class="text-2xl md:text-3xl font-black text-slate-900">Bilan d'Évaluation Officiel</h2>
+          <p id="studentResultName" class="text-sm font-semibold text-dw-hover mt-1"></p>
+        </div>
+
+        <!-- SCORE SUMMARY BOXES -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+            <div class="text-xs uppercase font-semibold text-slate-500">Compréhension Orale</div>
+            <div id="finalQuizScore" class="text-2xl font-bold text-dw-blue mt-1">0 / 5</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Questions 1 à 5 (Français)</div>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+            <div class="text-xs uppercase font-semibold text-slate-500">Compte Rendu Écrit</div>
+            <div id="finalWritingScore" class="text-2xl font-bold text-purple-600 mt-1">0 / 5</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Synthèse (Anglais)</div>
+          </div>
+          <div class="bg-dw-light border border-dw-accent/30 p-4 rounded-xl">
+            <div class="text-xs uppercase font-semibold text-dw-hover">Note Globale Final</div>
+            <div id="finalTotalScore" class="text-2xl font-black text-dw-blue mt-1">0%</div>
+            <div id="finalGradeBadge" class="text-[11px] font-bold text-dw-hover mt-0.5">Niveau : -</div>
+          </div>
+        </div>
+
+        <!-- AUDIT & SECURITY LOG DISPLAY -->
+        <div class="bg-slate-900 text-slate-200 p-4 rounded-xl text-left text-xs space-y-2 border border-slate-800">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span class="font-bold flex items-center gap-1.5 text-amber-400">
+              <i class="fa-solid fa-shield-cat"></i> Rapport d'Intégrité Anti-Triche :
+            </span>
+            <span id="integrityStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+              Session Validée
+            </span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-400 pt-1">
+            <div>• Sorties d'onglet / fenêtre : <strong id="totalTabSwitchesText" class="text-white">0</strong></div>
+            <div>• Interceptions copier/coller : <strong id="totalCopyAttemptsText" class="text-white">0</strong></div>
+          </div>
+          <div id="finalInfractionList" class="mt-2 text-[11px] font-mono text-amber-300/80 bg-slate-950 p-2 rounded max-h-24 overflow-y-auto hidden"></div>
+        </div>
+
+        <!-- RECAP OF QUESTIONS -->
+        <div class="text-left space-y-3 pt-2">
+          <h3 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-dw-accent"></i>
+            <span>Détail des réponses au quiz :</span>
+          </h3>
+          <div id="recapList" class="space-y-2.5"></div>
+        </div>
+
+        <!-- RECAP OF ENGLISH SUMMARY -->
+        <div class="text-left space-y-2 bg-slate-50 border border-slate-200 p-4 rounded-xl">
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-file-pen text-purple-600"></i> Synthèse rédigée en anglais par l'élève :
+          </h4>
+          <p id="userSummaryRecap" class="text-xs text-slate-600 italic bg-white p-3 rounded border border-slate-200 whitespace-pre-line leading-relaxed">
+            -
+          </p>
+        </div>
+
+        <!-- COPY REPORT BUTTON -->
+        <div class="flex justify-center pt-4 border-t border-slate-100">
+          <button type="button" id="copyResultsBtn" class="inline-flex items-center gap-2 bg-dw-blue hover:bg-slate-800 text-white font-bold px-6 py-3 rounded-xl transition-all text-xs md:text-sm shadow-lg cursor-pointer">
+            <i class="fa-regular fa-copy"></i>
+            <span>Copier le bilan complet (pour l'enseignant)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50 border border-slate-700">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toastMsg">Action effectuée</span>
+  </div>
+
+  <footer class="bg-white border-t border-slate-200 py-3 text-center text-[11px] text-slate-500">
+    <p>© DW Fact Check Educational Module - Intégration Vidéo Permanente & Surveillance Tolérante à la Veille.</p>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    (function() {
+      // -------------------------------------------------------------
+      // ÉTAT GLOBAL DE L'APPLICATION
+      // -------------------------------------------------------------
+      let warningCount = 0;
+      const maxWarnings = 3;
+      let copyAttemptsCount = 0;
+      let infractionLogs = [];
+      let isQuizActive = false;
+      let isDisqualified = false;
+      let studentName = "";
+
+      let wakeLockSentinel = null;
+      let lastHeartbeat = Date.now();
+      let isSystemSleeping = false;
+      let heartbeatInterval = null;
+
+      let currentQuestionIndex = 0;
+      let userAnswers = {};
+      let quizScore = 0;
+      let isAnswerSubmitted = false;
+      let summaryScore = 0;
+
+      // -------------------------------------------------------------
+      // DONNÉES DU QUIZ
+      // -------------------------------------------------------------
+      const quizQuestions = [
+        {
+          id: 1,
+          type: 'single',
+          startSeconds: 0,
+          title: "1. Quel premier exemple de faux produit généré par IA est présenté au début du reportage DW ?",
+          subtitle: "Sélectionnez l'unique bonne réponse :",
+          options: [
+            { text: "Une enceinte Bluetooth sculptée en bois précieux", correct: false },
+            { text: "Une tasse à café en forme d'empilement de livres sculptés", correct: true },
+            { text: "Une montre connectée capable de projeter un écran holographique", correct: false },
+            { text: "Une lampe de chevet en forme de planète animée", correct: false }
+          ],
+          explanation: "Dès les premières secondes (0:00), DW montre la publicité virale d'une magnifique tasse à café ressemblant à une pile de livres. C'est un pur produit virtuel généré par IA qui n'existe pas."
+        },
+        {
+          id: 2,
+          type: 'multiple',
+          startSeconds: 24,
+          title: "2. Quels sont les vrais risques encourus par les personnes qui cliquent sur ces fausses publicités ?",
+          subtitle: "Sélectionnez toutes les propositions exactes :",
+          options: [
+            { text: "Téléchargement involontaire de malwares sur leur appareil", correct: true },
+            { text: "Prélèvements bancaires cachés et abonnements mensuels récurrents", correct: true },
+            { text: "Vol et revente des coordonnées de leur carte de crédit", correct: true },
+            { text: "Attaque immédiate du réseau Wi-Fi du domicile", correct: false }
+          ],
+          explanation: "À partir de 0:24, le reportage explique que ces sites cherchent à dérober les identifiants bancaires, à abonner les victimes à leur insu et à infecter les téléphones avec des malwares."
+        },
+        {
+          id: 3,
+          type: 'single',
+          startSeconds: 124,
+          title: "3. Pourquoi ces fausses publicités sont-elles aujourd'hui si faciles et rapides à fabriquer pour les arnaqueurs ?",
+          subtitle: "Sélectionnez l'explication principale :",
+          options: [
+            { text: "Car les caméras de studio et les acteurs sont devenus totalement gratuits", correct: false },
+            { text: "Parce que les générateurs vidéo par IA créent une pub complète avec un simple prompt texte, sans prototype réel", correct: true },
+            { text: "Parce que les réseaux sociaux subventionnent la création de publicités vidéo", correct: false },
+            { text: "Car les arnaqueurs achètent les droits de vraies marques déposées", correct: false }
+          ],
+          explanation: "À 2:04 (124s), DW démontre qu'avec les outils de génération vidéo texte-vers-vidéo (Text-to-Video), quelques phrases ('prompts') suffisent pour générer un clip réaliste sans fabriquer d'objet."
+        },
+        {
+          id: 4,
+          type: 'multiple',
+          startSeconds: 213,
+          title: "4. Quelles méthodes sont recommandées par les experts de DW Fact Check pour repérer ces arnaques ?",
+          subtitle: "Sélectionnez toutes les bonnes pratiques conseillées :",
+          options: [
+            { text: "Utiliser la recherche d'image inversée (Reverse Image Search)", correct: true },
+            { text: "Vérifier attentivement l'URL du site marchand (nom de domaine suspect ou très récent)", correct: true },
+            { text: "Se méfier des promotions exagérées et des compteurs de temps d'urgence artificiels", correct: true },
+            { text: "Se fier uniquement au nombre de 'J'aime' ou de commentaires sous la publicité", correct: false }
+          ],
+          explanation: "À 3:33 (213s), DW préconise l'utilisation de la recherche d'image inversée, le contrôle rigoureux du nom de domaine et la méfiance face au marketing d'urgence."
+        },
+        {
+          id: 5,
+          type: 'single',
+          startSeconds: 307,
+          title: "5. Pourquoi les réseaux sociaux échouent-ils souvent à bloquer ces fausses publicités IA avant leur diffusion ?",
+          subtitle: "Sélectionnez la raison soulevée par DW :",
+          options: [
+            { text: "Parce qu'il est illégal pour les réseaux sociaux d'analyser les publicités payantes", correct: false },
+            { text: "Le volume massif de publicités et l'hyperréalisme des visuels IA dépassent les filtres automatiques de modération", correct: true },
+            { text: "Car toutes les pubs générées par IA reçoivent un certificat officiel", correct: false },
+            { text: "Parce que les modérateurs sont remplacés par les arnaqueurs eux-mêmes", correct: false }
+          ],
+          explanation: "À 5:07 (307s), l'enquête montre que les systèmes de modération automatique des plateformes sont submergés par la quantité massive de visuels IA réalistes."
+        }
+      ];
+
+      // -------------------------------------------------------------
+      // NOTIFICATIONS TOAST
+      // -------------------------------------------------------------
+      function showToast(message, type = "success") {
+        const toast = document.getElementById('toast');
+        const toastMsg = document.getElementById('toastMsg');
+        const toastIcon = document.getElementById('toastIcon');
+        if (!toast || !toastMsg || !toastIcon) return;
+
+        toastMsg.innerText = message;
+        if (type === "warning") {
+          toastIcon.className = "fa-solid fa-triangle-exclamation text-amber-400 text-base";
+        } else {
+          toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-base";
+        }
+
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+
+        setTimeout(() => {
+          toast.classList.remove('translate-y-0', 'opacity-100');
+          toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3500);
+      }
+
+      // -------------------------------------------------------------
+      // WAKE LOCK & DÉTECTION DE VEILLE
+      // -------------------------------------------------------------
+      async function enableWakeLock() {
+        try {
+          if ('wakeLock' in navigator) {
+            wakeLockSentinel = await navigator.wakeLock.request('screen');
+            const badge = document.getElementById('wakeLockBadge');
+            if (badge) {
+              badge.classList.remove('hidden');
+              badge.classList.add('flex');
+            }
+          }
+        } catch (err) {
+          // Ignoré silencieusement si bloqué par iframe/navigateur
+        }
+      }
+
+      function releaseWakeLock() {
+        try {
+          if (wakeLockSentinel !== null) {
+            wakeLockSentinel.release().catch(() => {});
+            wakeLockSentinel = null;
+          }
+          const badge = document.getElementById('wakeLockBadge');
+          if (badge) {
+            badge.classList.add('hidden');
+            badge.classList.remove('flex');
+          }
+        } catch (e) {}
+      }
+
+      function startSleepDetector() {
+        lastHeartbeat = Date.now();
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        
+        heartbeatInterval = setInterval(() => {
+          const now = Date.now();
+          const elapsed = now - lastHeartbeat;
+          
+          if (elapsed > 4000) {
+            isSystemSleeping = true;
+            recordInfoLog(`Mise en veille détectée (${Math.round(elapsed / 1000)}s) - Aucune pénalité appliquée.`);
+            showToast("Sortie de veille détectée : aucune pénalité appliquée.", "success");
+            
+            setTimeout(() => {
+              isSystemSleeping = false;
+            }, 2500);
+          }
+          lastHeartbeat = now;
+        }, 1000);
+      }
+
+      function stopSleepDetector() {
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+      }
+
+      // -------------------------------------------------------------
+      // SYSTÈME ANTI-TRICHE
+      // -------------------------------------------------------------
+      function recordInfraction(detail) {
+        const timestamp = new Date().toLocaleTimeString();
+        infractionLogs.push(`[${timestamp}] ⚠️ ${detail}`);
+      }
+
+      function recordInfoLog(detail) {
+        const timestamp = new Date().toLocaleTimeString();
+        infractionLogs.push(`[${timestamp}] ℹ️ ${detail}`);
+      }
+
+      function handleSecurityBreach(reason) {
+        warningCount++;
+        recordInfraction(reason);
+
+        const warningBadge = document.getElementById('warningBadge');
+        const warningCountText = document.getElementById('warningCountText');
+        if (warningCountText) warningCountText.innerText = `${warningCount}/3`;
+
+        if (warningBadge) {
+          if (warningCount >= 2) {
+            warningBadge.className = "bg-red-900 text-red-300 font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-red-500";
+          } else {
+            warningBadge.className = "bg-slate-800 text-amber-400 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-amber-400/30";
+          }
+        }
+
+        const overlayCount = document.getElementById('overlayWarningCount');
+        if (overlayCount) overlayCount.innerText = warningCount;
+
+        if (warningCount >= maxWarnings) {
+          triggerDisqualification();
+        } else {
+          showToast(`Avertissement ${warningCount}/3 : ${reason}`, "warning");
+        }
+      }
+
+      function triggerDisqualification() {
+        isDisqualified = true;
+        isQuizActive = false;
+        stopSleepDetector();
+        releaseWakeLock();
+        
+        const logList = document.getElementById('infractionLogList');
+        if (logList) logList.innerHTML = infractionLogs.map(log => `<div>${log}</div>`).join('');
+
+        const modal = document.getElementById('disqualifiedModal');
+        if (modal) {
+          modal.classList.remove('hidden');
+          modal.style.display = 'flex';
+        }
+      }
+
+      function requestFullscreenSafe() {
+        try {
+          const docEl = document.documentElement;
+          const requestMethod = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+          if (requestMethod) {
+            const p = requestMethod.call(docEl);
+            if (p && typeof p.catch === 'function') {
+              p.catch(() => {});
+            }
+          }
+        } catch (e) {}
+      }
+
+      function handleFullscreenChange() {
+        const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+        const fsBadge = document.getElementById('fullscreenBadge');
+        const fsText = document.getElementById('fsStatusText');
+        const overlay = document.getElementById('fullscreenOverlay');
+
+        if (isFS) {
+          if (fsBadge) fsBadge.className = "bg-slate-800 text-emerald-400 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-emerald-500/30";
+          if (fsText) fsText.innerText = "Actif";
+          if (overlay) {
+            overlay.classList.add('hidden');
+            overlay.style.display = 'none';
+          }
+        } else {
+          if (fsBadge) fsBadge.className = "bg-slate-800 text-amber-400 font-semibold px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-amber-400/30";
+          if (fsText) fsText.innerText = "Inactif";
+          
+          if (isQuizActive && !isDisqualified) {
+            const fsTitle = document.getElementById('fsOverlayTitle');
+            const fsDesc = document.getElementById('fsOverlayDesc');
+
+            if (isSystemSleeping) {
+              if (fsTitle) {
+                fsTitle.innerText = "Reprise après mise en veille";
+                fsTitle.className = "text-xl font-extrabold text-sky-400 mb-2";
+              }
+              if (fsDesc) fsDesc.innerHTML = "Votre ordinateur s'est mis en veille. <strong>Aucune pénalité n'a été comptée.</strong> Cliquez ci-dessous pour reprendre en plein écran.";
+              if (overlay) {
+                overlay.classList.remove('hidden');
+                overlay.style.display = 'flex';
+              }
+            } else {
+              if (fsTitle) {
+                fsTitle.innerText = "Mode Plein Écran Interrompu !";
+                fsTitle.className = "text-xl font-extrabold text-red-400 mb-2";
+              }
+              if (fsDesc) fsDesc.innerHTML = "Pour garantir l'intégrité de l'épreuve, vous devez rester en <strong>mode plein écran</strong> et sur cet onglet.";
+              handleSecurityBreach("Sortie du mode Plein Écran");
+              if (overlay) {
+                overlay.classList.remove('hidden');
+                overlay.style.display = 'flex';
+              }
+            }
+          }
+        }
+      }
+
+      // -------------------------------------------------------------
+      // CONTRÔLE VIDÉO
+      // -------------------------------------------------------------
+      function seekVideoTo(seconds) {
+        try {
+          const iframe = document.getElementById('videoIframe');
+          if (iframe) {
+            iframe.src = `https://www.youtube-nocookie.com/embed/xT4D-CCBmB0?start=${seconds}&autoplay=1&rel=0&modestbranding=1&fs=0&enablejsapi=1`;
+            showToast(`Vidéo positionnée à ${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2, '0')}`);
+          }
+        } catch (e) {}
+      }
+
+      // -------------------------------------------------------------
+      // LOGIQUE DU QUIZ & DÉMARRAGE
+      // -------------------------------------------------------------
+      function startEvaluation() {
+        const nameInputEl = document.getElementById('studentNameInput');
+        const nameVal = nameInputEl ? nameInputEl.value.trim() : "";
+        
+        if (!nameVal) {
+          showToast("Veuillez saisir votre Nom et Prénom avant de commencer.", "warning");
+          if (nameInputEl) nameInputEl.focus();
+          return;
+        }
+
+        studentName = nameVal;
+        const headerName = document.getElementById('headerStudentName');
+        const studentHeader = document.getElementById('studentDisplayHeader');
+        if (headerName) headerName.innerText = studentName;
+        if (studentHeader) studentHeader.classList.remove('hidden');
+
+        // Bascule explicite de l'affichage
+        const introCard = document.getElementById('introCard');
+        const evalWorkspace = document.getElementById('evalWorkspace');
+        if (introCard) {
+          introCard.classList.add('hidden');
+          introCard.style.display = 'none';
+        }
+        if (evalWorkspace) {
+          evalWorkspace.classList.remove('hidden');
+          evalWorkspace.style.display = 'grid';
+        }
+
+        isQuizActive = true;
+        currentQuestionIndex = 0;
+        userAnswers = {};
+        quizScore = 0;
+        updateScoreDisplay();
+        renderQuestion();
+
+        // Lancement non-bloquant des protections
+        requestFullscreenSafe();
+        enableWakeLock();
+        startSleepDetector();
+      }
+
+      function renderQuestion() {
+        isAnswerSubmitted = false;
+        const
