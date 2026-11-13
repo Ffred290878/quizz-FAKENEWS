@@ -218,6 +218,15 @@
           </iframe>
         </div>
 
+        <!-- SECOURS : OUVERTURE SUR YOUTUBE SANS PÉNALITÉ -->
+        <button type="button" id="openYoutubeBtn" class="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-3 py-2.5 rounded-lg transition-colors cursor-pointer">
+          <i class="fa-brands fa-youtube"></i>
+          <span>La vidéo ne s'affiche pas ? Ouvrir sur YouTube</span>
+        </button>
+        <p class="text-[11px] text-slate-500 -mt-2">
+          Cette ouverture n'est <strong>pas pénalisée</strong> (elle est simplement notée dans le rapport). Revenez ensuite sur cet onglet pour répondre.
+        </p>
+
         <!-- QUICK TIMESTAMP JUMP BUTTONS -->
         <div class="space-y-2 pt-1 border-t border-slate-100">
           <p class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
@@ -403,6 +412,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-slate-400 pt-1">
             <div>• Sorties d'onglet / fenêtre : <strong id="totalTabSwitchesText" class="text-white">0</strong></div>
             <div>• Interceptions copier/coller : <strong id="totalCopyAttemptsText" class="text-white">0</strong></div>
+            <div class="md:col-span-2">• Vidéo ouverte sur YouTube (tolérée) : <strong id="totalExternalVideoText" class="text-white">0</strong></div>
           </div>
           <div id="finalInfractionList" class="mt-2 text-[11px] font-mono text-amber-300/80 bg-slate-950 p-2 rounded max-h-24 overflow-y-auto hidden"></div>
         </div>
@@ -471,6 +481,14 @@
       let quizScore = 0;
       let isAnswerSubmitted = false;
       let summaryScore = 0;
+      let selectedOptions = [];
+      const DISQUALIFICATION_PENALTY = 0.5; // coefficient appliqué à la note si session verrouillée
+      const VIDEO_ID = 'xT4D-CCBmB0';
+      let currentVideoSeconds = 0;       // dernier passage demandé
+      let externalVideoActive = false;   // visionnage autorisé sur YouTube en cours
+      let externalVideoOpenedAt = 0;
+      let externalVideoCount = 0;
+      let externalVideoTotalMs = 0;
 
       // -------------------------------------------------------------
       // DONNÉES DU QUIZ
@@ -613,7 +631,7 @@
           const now = Date.now();
           const elapsed = now - lastHeartbeat;
           
-          if (elapsed > 4000) {
+          if (elapsed > 4000 && !externalVideoActive) {
             isSystemSleeping = true;
             recordInfoLog(`Mise en veille détectée (${Math.round(elapsed / 1000)}s) - Aucune pénalité appliquée.`);
             showToast("Sortie de veille détectée : aucune pénalité appliquée.", "success");
@@ -722,7 +740,17 @@
             const fsTitle = document.getElementById('fsOverlayTitle');
             const fsDesc = document.getElementById('fsOverlayDesc');
 
-            if (isSystemSleeping) {
+            if (externalVideoActive) {
+              if (fsTitle) {
+                fsTitle.innerText = "Retour de la vidéo YouTube";
+                fsTitle.className = "text-xl font-extrabold text-sky-400 mb-2";
+              }
+              if (fsDesc) fsDesc.innerHTML = "Vous avez visionné la vidéo sur YouTube. <strong>Aucune pénalité n'a été comptée.</strong> Cliquez ci-dessous pour reprendre en plein écran.";
+              if (overlay) {
+                overlay.classList.remove('hidden');
+                overlay.style.display = 'flex';
+              }
+            } else if (isSystemSleeping) {
               if (fsTitle) {
                 fsTitle.innerText = "Reprise après mise en veille";
                 fsTitle.className = "text-xl font-extrabold text-sky-400 mb-2";
@@ -751,14 +779,40 @@
       // -------------------------------------------------------------
       // CONTRÔLE VIDÉO
       // -------------------------------------------------------------
+      function formatTime(sec) {
+        return `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`;
+      }
+
       function seekVideoTo(seconds) {
+        currentVideoSeconds = seconds;
         try {
           const iframe = document.getElementById('videoIframe');
           if (iframe) {
-            iframe.src = `https://www.youtube-nocookie.com/embed/xT4D-CCBmB0?start=${seconds}&autoplay=1&rel=0&modestbranding=1&fs=0&enablejsapi=1`;
-            showToast(`Vidéo positionnée à ${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2, '0')}`);
+            iframe.src = `https://www.youtube-nocookie.com/embed/${VIDEO_ID}?start=${seconds}&autoplay=1&rel=0&modestbranding=1&fs=0&enablejsapi=1`;
+            showToast(`Vidéo positionnée à ${formatTime(seconds)}`);
           }
         } catch (e) {}
+      }
+
+      // Ouvre la vidéo sur YouTube : sortie de l'onglet tolérée et tracée (pas de pénalité)
+      function openVideoOnYoutube() {
+        if (!isQuizActive) return;
+        externalVideoActive = true;
+        externalVideoOpenedAt = Date.now();
+        const url = `https://www.youtube.com/watch?v=${VIDEO_ID}&t=${currentVideoSeconds}s`;
+        const win = window.open(url, '_blank');
+        if (!win) {
+          externalVideoActive = false;
+          showToast("Le navigateur a bloqué l'ouverture : autorisez les pop-ups pour ce site.", "warning");
+          return;
+        }
+        try { win.opener = null; } catch (e) {}
+        externalVideoCount++;
+        recordInfoLog(`Vidéo ouverte sur YouTube à ${formatTime(currentVideoSeconds)} - aucune pénalité.`);
+        // Si l'onglet de la page reste visible, aucune sortie n'est tolérée plus longtemps
+        setTimeout(() => {
+          if (externalVideoActive && document.visibilityState === 'visible') externalVideoActive = false;
+        }, 5000);
       }
 
       // -------------------------------------------------------------
@@ -807,4 +861,474 @@
 
       function renderQuestion() {
         isAnswerSubmitted = false;
-        const
+
+        const q = quizQuestions[currentQuestionIndex];
+        selectedOptions = [];
+
+        const stepBadge = document.getElementById('stepBadge');
+        if (stepBadge) stepBadge.innerText = `Question ${currentQuestionIndex + 1} / ${quizQuestions.length}`;
+        setProgress((currentQuestionIndex / (quizQuestions.length + 1)) * 100);
+
+        document.getElementById('questionTitle').innerText = q.title;
+        document.getElementById('questionSubtitle').innerText = q.subtitle;
+
+        const feedback = document.getElementById('feedbackBox');
+        feedback.classList.add('hidden');
+        feedback.innerHTML = '';
+
+        const container = document.getElementById('optionsContainer');
+        container.innerHTML = '';
+        q.options.forEach((opt, i) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.index = i;
+          btn.className = 'option-btn w-full text-left flex items-start gap-3 p-3.5 rounded-xl border-2 border-slate-200 bg-white hover:border-dw-accent hover:bg-dw-light/50 transition-all text-xs md:text-sm cursor-pointer';
+          const marker = document.createElement('span');
+          marker.className = 'marker flex-shrink-0 w-5 h-5 mt-0.5 border-2 border-slate-300 flex items-center justify-center text-[10px] text-white ' + (q.type === 'multiple' ? 'rounded' : 'rounded-full');
+          const label = document.createElement('span');
+          label.className = 'flex-1 leading-snug';
+          label.textContent = opt.text;
+          btn.appendChild(marker);
+          btn.appendChild(label);
+          btn.addEventListener('click', () => toggleOption(i));
+          container.appendChild(btn);
+        });
+
+        setActionButton('Valider la réponse', 'fa-check');
+      }
+
+      function setActionButton(text, icon) {
+        const btn = document.getElementById('actionBtn');
+        btn.innerHTML = `<span>${text}</span><i class="fa-solid ${icon}"></i>`;
+      }
+
+      function setProgress(pct) {
+        const bar = document.getElementById('progressBar');
+        if (bar) bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      }
+
+      function updateScoreDisplay() {
+        const el = document.getElementById('currentScore');
+        if (el) el.innerText = quizScore;
+      }
+
+      function refreshOptionStyles() {
+        document.querySelectorAll('#optionsContainer .option-btn').forEach(btn => {
+          const i = Number(btn.dataset.index);
+          const marker = btn.querySelector('.marker');
+          const on = selectedOptions.includes(i);
+          btn.classList.toggle('border-dw-accent', on);
+          btn.classList.toggle('bg-dw-light', on);
+          btn.classList.toggle('border-slate-200', !on);
+          btn.classList.toggle('bg-white', !on);
+          marker.classList.toggle('bg-dw-accent', on);
+          marker.classList.toggle('border-dw-accent', on);
+          marker.classList.toggle('border-slate-300', !on);
+          marker.innerHTML = on ? '<i class="fa-solid fa-check"></i>' : '';
+        });
+      }
+
+      function toggleOption(i) {
+        if (isAnswerSubmitted) return;
+        const q = quizQuestions[currentQuestionIndex];
+        if (q.type === 'single') {
+          selectedOptions = [i];
+        } else {
+          selectedOptions = selectedOptions.includes(i)
+            ? selectedOptions.filter(x => x !== i)
+            : [...selectedOptions, i];
+        }
+        refreshOptionStyles();
+      }
+
+      function validateAnswer() {
+        const q = quizQuestions[currentQuestionIndex];
+        if (selectedOptions.length === 0) {
+          showToast("Sélectionnez au moins une réponse.", "warning");
+          return;
+        }
+        isAnswerSubmitted = true;
+
+        const correctIdx = q.options.map((o, i) => o.correct ? i : -1).filter(i => i >= 0);
+        const isCorrect = correctIdx.length === selectedOptions.length &&
+                          correctIdx.every(i => selectedOptions.includes(i));
+        if (isCorrect) quizScore++;
+        userAnswers[currentQuestionIndex] = { selected: [...selectedOptions], correct: isCorrect };
+        updateScoreDisplay();
+
+        document.querySelectorAll('#optionsContainer .option-btn').forEach(btn => {
+          const i = Number(btn.dataset.index);
+          const isRight = q.options[i].correct;
+          const isPicked = selectedOptions.includes(i);
+          btn.disabled = true;
+          btn.classList.remove('cursor-pointer', 'hover:border-dw-accent', 'hover:bg-dw-light/50', 'border-dw-accent', 'bg-dw-light', 'border-slate-200', 'bg-white');
+          const marker = btn.querySelector('.marker');
+          marker.className = marker.className.replace(/bg-dw-accent|border-dw-accent|border-slate-300/g, '');
+          if (isRight) {
+            btn.classList.add('border-emerald-500', 'bg-emerald-50');
+            marker.classList.add('bg-emerald-500', 'border-emerald-500');
+            marker.innerHTML = '<i class="fa-solid fa-check"></i>';
+          } else if (isPicked) {
+            btn.classList.add('border-red-500', 'bg-red-50');
+            marker.classList.add('bg-red-500', 'border-red-500');
+            marker.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+          } else {
+            btn.classList.add('border-slate-200', 'bg-white', 'opacity-60');
+          }
+        });
+
+        const feedback = document.getElementById('feedbackBox');
+        feedback.className = 'p-4 rounded-xl border text-xs md:text-sm leading-relaxed fade-in ' +
+          (isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900');
+        feedback.innerHTML = '';
+        const title = document.createElement('p');
+        title.className = 'font-bold mb-1';
+        title.innerHTML = isCorrect
+          ? '<i class="fa-solid fa-circle-check mr-1"></i> Bonne réponse !'
+          : '<i class="fa-solid fa-circle-xmark mr-1"></i> Réponse incorrecte ou incomplète.';
+        const expl = document.createElement('p');
+        expl.textContent = q.explanation;
+        feedback.appendChild(title);
+        feedback.appendChild(expl);
+
+        const isLast = currentQuestionIndex === quizQuestions.length - 1;
+        setActionButton(isLast ? 'Passer à la rédaction' : 'Question suivante', isLast ? 'fa-pen-nib' : 'fa-arrow-right');
+      }
+
+      function handleAction() {
+        if (!isAnswerSubmitted) {
+          validateAnswer();
+          return;
+        }
+        if (currentQuestionIndex < quizQuestions.length - 1) {
+          currentQuestionIndex++;
+          renderQuestion();
+        } else {
+          showSummaryStep();
+        }
+      }
+
+      // -------------------------------------------------------------
+      // RÉDACTION EN ANGLAIS
+      // -------------------------------------------------------------
+      function showSummaryStep() {
+        document.getElementById('quizContainer').classList.add('hidden');
+        document.getElementById('summaryContainer').classList.remove('hidden');
+        setProgress((quizQuestions.length / (quizQuestions.length + 1)) * 100);
+        seekVideoTo(0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function countWords(text) {
+        return text.trim().split(/\s+/).filter(Boolean).length;
+      }
+
+      function updateCounters() {
+        const ta = document.getElementById('englishSummary');
+        const words = countWords(ta.value);
+        const wc = document.getElementById('wordCount');
+        wc.innerText = words;
+        wc.className = (words >= 100 && words <= 150) ? 'text-emerald-600' : 'text-slate-900';
+        document.getElementById('charCount').innerText = ta.value.length;
+      }
+
+      const topicDefs = [
+        { label: "Technologie IA (génération vidéo, prompts)", patterns: [/\bai\b|artificial intelligence/i, /generat/i, /text[- ]to[- ]video|video/i, /prompt/i, /prototype|real product|physical/i] },
+        { label: "Arnaques aux consommateurs (produit inexistant, abonnements, vol de carte)", patterns: [/scam|fraud|fake|deceiv|trick/i, /subscription/i, /credit card|card (data|details|information)|bank|payment/i, /malware|virus/i, /non-?existent|does(n'?t| not) exist|never (arrive|exist)|not real|unreal/i] },
+        { label: "Comment repérer (recherche inversée, domaine, urgence)", patterns: [/reverse (image )?search/i, /domain|url|website address/i, /timer|countdown|urgen|pressure/i, /check|verify|suspicious|careful|be wary|beware/i] }
+      ];
+
+      function scoreSummary(text) {
+        const words = countWords(text);
+        let lengthPts = 0;
+        if (words >= 100 && words <= 150) lengthPts = 2;
+        else if ((words >= 70 && words < 100) || (words > 150 && words <= 190)) lengthPts = 1;
+
+        const topics = topicDefs.map(t => {
+          const hits = t.patterns.filter(p => p.test(text)).length;
+          const pts = hits >= 2 ? 1 : (hits === 1 ? 0.5 : 0);
+          return { label: t.label, pts };
+        });
+        const total = Math.min(5, lengthPts + topics.reduce((s, t) => s + t.pts, 0));
+        return { words, lengthPts, topics, total };
+      }
+
+      let summaryEvaluated = false;
+
+      function handleEvaluateSummary() {
+        if (summaryEvaluated) {
+          showResults(false);
+          return;
+        }
+        const ta = document.getElementById('englishSummary');
+        const text = ta.value;
+        if (countWords(text) < 20) {
+          showToast("Rédigez un texte plus complet (au moins 20 mots) avant d'évaluer.", "warning");
+          return;
+        }
+        const res = scoreSummary(text);
+        summaryScore = res.total;
+        summaryEvaluated = true;
+        ta.readOnly = true;
+        ta.classList.add('opacity-75');
+
+        const box = document.getElementById('summaryFeedback');
+        box.className = 'p-4 rounded-xl border text-xs md:text-sm space-y-3 fade-in bg-slate-50 border-slate-200 text-slate-800';
+        box.innerHTML = '';
+        const h = document.createElement('p');
+        h.className = 'font-bold';
+        h.textContent = `Note estimée : ${res.total} / 5 (${res.words} mots)`;
+        box.appendChild(h);
+        const ul = document.createElement('ul');
+        ul.className = 'space-y-1 text-[11px]';
+        const lenLi = document.createElement('li');
+        lenLi.textContent = `${res.lengthPts === 2 ? '✅' : res.lengthPts === 1 ? '🟡' : '❌'} Longueur (cible 100–150 mots) : ${res.lengthPts} / 2`;
+        ul.appendChild(lenLi);
+        res.topics.forEach(t => {
+          const li = document.createElement('li');
+          li.textContent = `${t.pts === 1 ? '✅' : t.pts > 0 ? '🟡' : '❌'} ${t.label} : ${t.pts} / 1`;
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
+        const note = document.createElement('p');
+        note.className = 'text-[11px] text-slate-500 italic';
+        note.textContent = "Évaluation automatique indicative (longueur + mots-clés). L'enseignant peut la réviser.";
+        box.appendChild(note);
+
+        document.getElementById('evaluateSummaryBtn').innerHTML =
+          '<i class="fa-solid fa-flag-checkered"></i><span>Voir le bilan final</span>';
+      }
+
+      // -------------------------------------------------------------
+      // BILAN FINAL
+      // -------------------------------------------------------------
+      function buildReportText() {
+        const lines = [];
+        lines.push('BILAN D\'ÉVALUATION - DW Fact Check: Fake AI Ads');
+        lines.push(`Élève : ${studentName}`);
+        lines.push(`Compréhension orale : ${quizScore} / ${quizQuestions.length}`);
+        lines.push(`Compte rendu écrit : ${summaryScore} / 5`);
+        lines.push(`Note globale : ${document.getElementById('finalTotalScore').innerText} (${document.getElementById('finalGradeBadge').innerText})`);
+        lines.push(`Sorties détectées : ${warningCount} | Tentatives copier/coller : ${copyAttemptsCount}`);
+        lines.push(`Vidéo ouverte sur YouTube (tolérée) : ${externalVideoCount} fois, ${Math.round(externalVideoTotalMs / 1000)}s au total`);
+        lines.push(`Intégrité : ${document.getElementById('integrityStatusBadge').innerText}`);
+        if (infractionLogs.length) {
+          lines.push('', 'Journal :');
+          infractionLogs.forEach(l => lines.push('  ' + l));
+        }
+        lines.push('', 'Réponses au quiz :');
+        quizQuestions.forEach((q, i) => {
+          const a = userAnswers[i];
+          const chosen = a ? a.selected.map(k => q.options[k].text).join(' | ') : '(non répondu)';
+          lines.push(`  Q${i + 1} [${a && a.correct ? 'OK' : 'KO'}] ${chosen}`);
+        });
+        lines.push('', 'Synthèse en anglais :', document.getElementById('englishSummary').value || '-');
+        return lines.join('\n');
+      }
+
+      function showResults(withPenalty) {
+        isQuizActive = false;
+        stopSleepDetector();
+        releaseWakeLock();
+        setProgress(100);
+
+        try {
+          if (document.fullscreenElement || document.webkitFullscreenElement) {
+            const p = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+            if (p && p.catch) p.catch(() => {});
+          }
+        } catch (e) {}
+
+        ['fullscreenOverlay', 'disqualifiedModal'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.classList.add('hidden'); el.style.display = 'none'; }
+        });
+
+        const ws = document.getElementById('evalWorkspace');
+        ws.classList.add('hidden');
+        ws.style.display = 'none';
+        document.getElementById('resultsContainer').classList.remove('hidden');
+
+        const text = document.getElementById('englishSummary').value;
+        if (!summaryEvaluated && countWords(text) >= 20) {
+          summaryScore = scoreSummary(text).total;
+        }
+
+        const rawPct = ((quizScore + summaryScore) / (quizQuestions.length + 5)) * 100;
+        const pct = Math.round(withPenalty ? rawPct * DISQUALIFICATION_PENALTY : rawPct);
+
+        document.getElementById('studentResultName').innerText = studentName;
+        document.getElementById('finalQuizScore').innerText = `${quizScore} / ${quizQuestions.length}`;
+        document.getElementById('finalWritingScore').innerText = `${summaryScore} / 5`;
+        document.getElementById('finalTotalScore').innerText = `${pct}%`;
+        const grade = pct >= 90 ? 'Excellent' : pct >= 75 ? 'Très bien' : pct >= 60 ? 'Bien' : pct >= 50 ? 'Satisfaisant' : 'À renforcer';
+        document.getElementById('finalGradeBadge').innerText = `Niveau : ${grade}`;
+
+        document.getElementById('totalTabSwitchesText').innerText = warningCount;
+        document.getElementById('totalCopyAttemptsText').innerText = copyAttemptsCount;
+        document.getElementById('totalExternalVideoText').innerText =
+          externalVideoCount === 0 ? '0' : `${externalVideoCount} fois (${Math.round(externalVideoTotalMs / 1000)}s au total)`;
+
+        const badge = document.getElementById('integrityStatusBadge');
+        if (withPenalty || isDisqualified) {
+          badge.innerText = `Session verrouillée (pénalité ×${DISQUALIFICATION_PENALTY})`;
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/40';
+        } else if (warningCount > 0 || copyAttemptsCount > 0) {
+          badge.innerText = 'Session avec avertissements';
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/40';
+        }
+
+        const logBox = document.getElementById('finalInfractionList');
+        if (infractionLogs.length) {
+          logBox.classList.remove('hidden');
+          logBox.innerHTML = '';
+          infractionLogs.forEach(l => {
+            const d = document.createElement('div');
+            d.textContent = l;
+            logBox.appendChild(d);
+          });
+        }
+
+        const recap = document.getElementById('recapList');
+        recap.innerHTML = '';
+        quizQuestions.forEach((q, i) => {
+          const a = userAnswers[i];
+          const ok = a && a.correct;
+          const item = document.createElement('div');
+          item.className = 'p-3 rounded-xl border text-xs ' + (ok ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200');
+          const t = document.createElement('p');
+          t.className = 'font-semibold text-slate-900';
+          t.textContent = `${ok ? '✅' : '❌'} ${q.title}`;
+          const mine = document.createElement('p');
+          mine.className = 'text-slate-600 mt-1';
+          mine.textContent = 'Votre réponse : ' + (a ? a.selected.map(k => q.options[k].text).join(' | ') : '(non répondu)');
+          item.appendChild(t);
+          item.appendChild(mine);
+          if (!ok) {
+            const good = document.createElement('p');
+            good.className = 'text-emerald-800 mt-0.5';
+            good.textContent = 'Bonne réponse : ' + q.options.filter(o => o.correct).map(o => o.text).join(' | ');
+            item.appendChild(good);
+          }
+          recap.appendChild(item);
+        });
+
+        document.getElementById('userSummaryRecap').textContent = text.trim() || '-';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function copyResults() {
+        const txt = buildReportText();
+        const done = () => showToast("Bilan copié dans le presse-papiers.");
+        const fallback = () => {
+          const ta = document.createElement('textarea');
+          ta.value = txt;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); done(); } catch (e) { showToast("Copie impossible, sélectionnez le texte manuellement.", "warning"); }
+          document.body.removeChild(ta);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(done).catch(fallback);
+        } else {
+          fallback();
+        }
+      }
+
+      // -------------------------------------------------------------
+      // ÉVÉNEMENTS ANTI-TRICHE
+      // -------------------------------------------------------------
+      let lastBreachTime = 0;
+
+      function blockClipboard(e, label) {
+        if (!isQuizActive) return;
+        e.preventDefault();
+        copyAttemptsCount++;
+        recordInfraction(`${label} bloqué`);
+        showToast(`${label} désactivé pendant l'évaluation.`, "warning");
+      }
+
+      function bindEvents() {
+        document.getElementById('startBtn').addEventListener('click', startEvaluation);
+        document.getElementById('studentNameInput').addEventListener('keydown', e => {
+          if (e.key === 'Enter') startEvaluation();
+        });
+        document.getElementById('actionBtn').addEventListener('click', handleAction);
+        document.getElementById('openYoutubeBtn').addEventListener('click', openVideoOnYoutube);
+        document.getElementById('jumpQuestionTimeBtn').addEventListener('click', () => {
+          seekVideoTo(quizQuestions[currentQuestionIndex].startSeconds);
+        });
+        document.querySelectorAll('.seek-btn').forEach(b => {
+          b.addEventListener('click', () => seekVideoTo(Number(b.dataset.seconds)));
+        });
+
+        const ta = document.getElementById('englishSummary');
+        ta.addEventListener('input', updateCounters);
+        ta.addEventListener('paste', e => blockClipboard(e, 'Collage'));
+        ta.addEventListener('drop', e => blockClipboard(e, 'Glisser-déposer'));
+
+        document.getElementById('evaluateSummaryBtn').addEventListener('click', handleEvaluateSummary);
+        document.getElementById('copyResultsBtn').addEventListener('click', copyResults);
+
+        document.getElementById('resumeFsBtn').addEventListener('click', () => {
+          requestFullscreenSafe();
+          // Secours : si le navigateur refuse le plein écran, ne pas bloquer l'élève.
+          setTimeout(() => {
+            if (!(document.fullscreenElement || document.webkitFullscreenElement)) {
+              const ov = document.getElementById('fullscreenOverlay');
+              ov.classList.add('hidden');
+              ov.style.display = 'none';
+              showToast("Plein écran indisponible : reprise du test.", "warning");
+            }
+          }, 800);
+        });
+
+        document.getElementById('forceSubmitBtn').addEventListener('click', () => showResults(true));
+
+        document.addEventListener('copy', e => blockClipboard(e, 'Copier'));
+        document.addEventListener('cut', e => blockClipboard(e, 'Couper'));
+        document.addEventListener('paste', e => blockClipboard(e, 'Collage'));
+        document.addEventListener('contextmenu', e => { if (isQuizActive) e.preventDefault(); });
+        document.addEventListener('keydown', e => {
+          if (!isQuizActive) return;
+          const k = e.key.toLowerCase();
+          if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'p', 's', 'u'].includes(k)) {
+            e.preventDefault();
+            if (['c', 'v', 'x'].includes(k)) blockClipboard(e, 'Raccourci clavier');
+          }
+          if (e.key === 'F12') e.preventDefault();
+        });
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+        // Changement d'onglet (pas de "blur" : cliquer sur la vidéo YouTube le déclencherait à tort)
+        document.addEventListener('visibilitychange', () => {
+          if (!isQuizActive || isDisqualified) return;
+
+          if (document.visibilityState === 'visible') {
+            if (externalVideoActive) {
+              const ms = Date.now() - externalVideoOpenedAt;
+              externalVideoTotalMs += ms;
+              recordInfoLog(`Retour de YouTube après ${Math.round(ms / 1000)}s - aucune pénalité.`);
+              showToast("Retour de YouTube : aucune pénalité appliquée.");
+              // Délai de grâce : le plein écran peut se désactiver juste après le retour
+              setTimeout(() => { externalVideoActive = false; }, 1500);
+            }
+            return;
+          }
+
+          const now = Date.now();
+          if (externalVideoActive || now - lastBreachTime < 1500 || isSystemSleeping) return;
+          lastBreachTime = now;
+          handleSecurityBreach("Changement d'onglet / fenêtre");
+        });
+      }
+
+      bindEvents();
+    })();
+  </script>
+</body>
+</html>
